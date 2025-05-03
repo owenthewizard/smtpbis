@@ -18,8 +18,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot::Receiver;
 
-use rustls_pemfile::rsa_private_keys;
-use tokio_rustls::rustls::{Certificate, PrivateKey, ServerConfig, ServerConnection};
+use rustls_pemfile::{certs, rsa_private_keys};
+use tokio_rustls::rustls::{Certificate, PrivateKey};
+use tokio_rustls::rustls::{ServerConfig, ServerConnection};
 use tokio_rustls::TlsAcceptor;
 
 use rustyknife::rfc5321::{ForwardPath, Param, Path, ReversePath};
@@ -29,8 +30,8 @@ use smtpbis::{
     ShutdownSignal,
 };
 
-const CERT: &[u8] = include_bytes!("../../../data/testcert.pem");
-const KEY: &[u8] = include_bytes!("../../../data/testcert.key");
+const CERT: &[u8] = include_bytes!("../data/testcert.pem");
+const KEY: &[u8] = include_bytes!("../data/testcert.key");
 
 struct DummyHandler {
     tls_config: Arc<ServerConfig>,
@@ -54,11 +55,27 @@ impl DummyHandler {
 #[async_trait]
 impl Handler for DummyHandler {
     type TlsConfig = Arc<ServerConfig>;
+<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
+=======
+    type TlsSession = ServerConnection;
+>>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
 
     async fn tls_request(&mut self) -> Option<Self::TlsConfig> {
         Some(self.tls_config.clone())
     }
 
+<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
+=======
+    async fn tls_started(&mut self, session: &Self::TlsSession) {
+        println!(
+            "TLS started: {:?}/{:?}",
+            session.protocol_version(),
+            session.negotiated_cipher_suite()
+        );
+        self.reset_tx();
+    }
+
+>>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
     async fn ehlo(
         &mut self,
         domain: DomainPart,
@@ -67,6 +84,7 @@ impl Handler for DummyHandler {
         initial_keywords.insert("DSN".into(), None);
         initial_keywords.insert("8BITMIME".into(), None);
         initial_keywords.insert("SIZE".into(), Some("73400320".into()));
+        initial_keywords.insert("AUTH".into(), Some("PLAIN".into()));
 
         let greet = format!("hello {} from {}", domain, self.addr);
         self.helo = Some(domain);
@@ -80,6 +98,24 @@ impl Handler for DummyHandler {
         self.reset_tx();
 
         None
+    }
+
+    async fn auth(&mut self, auth_msg: String) -> Option<Reply> {
+        if let Ok(auth_msg) = base64::decode(auth_msg) {
+            let auth_raw = String::from_utf8_lossy(&auth_msg);
+            let auth_parts: Vec<&str> = auth_raw.split('\0').collect();
+            println!("authorization_identity: {:?}", auth_parts[0]);
+            println!("authentication_identity: {:?}", auth_parts[1]);
+            println!("password: {:?}", auth_parts[2]);
+
+            if true {
+                Some(Reply::new(235, None, "Authentication successful"))
+            } else {
+                Some(Reply::new(535, None, "Authentication credentials invalid"))
+            }
+        } else {
+            Some(Reply::new(501, None, "Base64-decode failed"))
+        }
     }
 
     async fn mail(&mut self, path: ReversePath, _params: Vec<Param>) -> Option<Reply> {
@@ -198,6 +234,20 @@ async fn listen_loop(mut shutdown: Receiver<()>) {
         .with_single_cert(certs, key)
         .unwrap();
 
+<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
+=======
+    let certs = certs(&mut Cursor::new(CERT)).unwrap();
+    let certificates: Vec<Certificate> = certs.into_iter().map(Certificate).collect();
+    let key = rsa_private_keys(&mut Cursor::new(KEY)).unwrap().remove(0);
+
+    let tls_config = ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_single_cert(certificates, PrivateKey(key))
+        .expect("bad certificate/key");
+
+    // tls_config.set_single_cert(certs, key).unwrap();
+>>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
     let tls_config = Arc::new(tls_config);
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
