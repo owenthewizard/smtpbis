@@ -18,7 +18,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot::Receiver;
 
-use rustls_pemfile::{certs, rsa_private_keys};
+use rustls_pemfile::rsa_private_keys;
 use tokio_rustls::rustls::{Certificate, PrivateKey};
 use tokio_rustls::rustls::{ServerConfig, ServerConnection};
 use tokio_rustls::TlsAcceptor;
@@ -55,27 +55,11 @@ impl DummyHandler {
 #[async_trait]
 impl Handler for DummyHandler {
     type TlsConfig = Arc<ServerConfig>;
-<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
-=======
-    type TlsSession = ServerConnection;
->>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
 
     async fn tls_request(&mut self) -> Option<Self::TlsConfig> {
         Some(self.tls_config.clone())
     }
 
-<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
-=======
-    async fn tls_started(&mut self, session: &Self::TlsSession) {
-        println!(
-            "TLS started: {:?}/{:?}",
-            session.protocol_version(),
-            session.negotiated_cipher_suite()
-        );
-        self.reset_tx();
-    }
-
->>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
     async fn ehlo(
         &mut self,
         domain: DomainPart,
@@ -234,20 +218,6 @@ async fn listen_loop(mut shutdown: Receiver<()>) {
         .with_single_cert(certs, key)
         .unwrap();
 
-<<<<<<< HEAD:src/bin/smtpbis-server/main.rs
-=======
-    let certs = certs(&mut Cursor::new(CERT)).unwrap();
-    let certificates: Vec<Certificate> = certs.into_iter().map(Certificate).collect();
-    let key = rsa_private_keys(&mut Cursor::new(KEY)).unwrap().remove(0);
-
-    let tls_config = ServerConfig::builder()
-        .with_safe_defaults()
-        .with_no_client_auth()
-        .with_single_cert(certificates, PrivateKey(key))
-        .expect("bad certificate/key");
-
-    // tls_config.set_single_cert(certs, key).unwrap();
->>>>>>> 2743f9ba44d9d7b5f96df09ab9bb0a5bb54a9e35:examples/smtpbis-server.rs
     let tls_config = Arc::new(tls_config);
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
